@@ -25,7 +25,11 @@ def hp(k):
 
     return ret
 
+sigma1=np.zeros((2,2),dtype=complex)
+sigma1[0,1]=-1j
+sigma1[1,0]=1j
 
+h1=np.kron(sigma1,sigma1)
 def hs(K):
     ret=np.zeros((4,4),dtype=complex)
 
@@ -37,6 +41,7 @@ def hs(K):
     ret[2,3]=v
     ret[3,0]=w*np.exp(1j*2*K)
     ret[3,2]=v
+    # ret+=0.1*h1
 
     return ret
 

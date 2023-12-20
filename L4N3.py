@@ -4,9 +4,9 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 
 v0=1
-v1=2
-v2=1.2
-v3=4.3
+v1=1.03
+v2=0.89
+v3=0.9
 Nk=3*30
 kIndValsAll=[n for n in range(0,Nk)]
 kValsAll=[2*np.pi*n/Nk for n in kIndValsAll]
@@ -106,7 +106,7 @@ for n in range(0,int(Nk/3)):
     oneK=[row0,row1,row2]
     supKEigsVecs.append(oneK)
 
-#plot band in SBZ
+#plot unperturbed band in SBZ
 
 # KPlt=[]
 # EigPlt=[]
@@ -152,8 +152,8 @@ U=np.zeros((5,5),dtype=complex)
 U[3,0]=v3
 
 W=np.zeros((5,5),dtype=complex)
-u2=0.05
-u3=0
+u2=0.1
+u3=0.0
 
 W[2,4]=u2
 W[3,4]=np.conj(u3)
@@ -169,7 +169,7 @@ def hs(n):
     K=kValsAll[n]
     r0=np.c_[V,U,np.exp(-1j*3*K)*np.conj(U.T)]
     r1=np.c_[np.conj(U.T),V,U]
-    r2=np.c_[np.exp(1j*3*K)*U,np.conj(U.T),V]
+    r2=np.c_[np.exp(1j*3*K)*U,np.conj(U.T),V+W]
     mat=np.r_[r0,r1,r2]
     vals,vecs=np.linalg.eigh(mat)
     return [n,vals,vecs]
@@ -182,41 +182,65 @@ tEigKEnd=datetime.now()
 print("K eig time: ",tEigKEnd-tEigKStart)
 retKSorted=sorted(retKAll,key=lambda item: item[0])
 
-def groupValues(irow0row1row2):
-    """
+#plot band in SBZ after perturbation
+KPertPlt=[]
+EigPertPlt=[]
+for i in range(0,15):
+    EigPertPlt.append([])
 
-    :param irow0row1row2: one entry in supKEigsVecs
-    :return:
-    """
-    i,row0,row1,row2=irow0row1row2
-    #positions of eigenvalues and eigenvalues
-    indexAndVals=[]
-    for i in range(0,5):
-        tmp0=[0,i,row0[2][i]]
-        indexAndVals.append(tmp0)
+for n in range(0,len(retKSorted)):
+    _,vals,_=retKSorted[n]
+    K=2*np.pi*n/Nk
+    KPertPlt.append(K)
 
-        tmp1=[1,i,row1[2][i]]
-        indexAndVals.append(tmp1)
+    eigsTmpSorted=sorted(vals)
+    for j in range(0,15):
+        EigPertPlt[j].append(eigsTmpSorted[j])
+KPertPlt=np.array(KPertPlt)
+plt.figure()
+for j in range(0,15):
+    plt.plot(KPertPlt/np.pi,EigPertPlt[j],color="black")
 
-        tmp2=[2,i,row2[2][i]]
-        indexAndVals.append(tmp2)
+plt.xlabel("$K/\pi$")
+plt.ylabel("Energy")
+plt.savefig("perturbationFolded.png")
+plt.close()
 
-    #sort eigenvalues
-    sortedIndexAndVals=sorted(indexAndVals,key=lambda item: item[2])
-
-    #group eigenvalues
-    groups=[]
-    epsr=1e-5
-    epsa=1e-7
-    groups.append([sortedIndexAndVals[0]])
-    for i in range(1,len(sortedIndexAndVals)):
-        lastVal=groups[-1][-1][2]
-        entryCurr=sortedIndexAndVals[i]
-        if np.isclose(lastVal,entryCurr[2],rtol=epsr,atol=epsa):
-            groups[-1].append(entryCurr)
-        else:
-            groups.append([entryCurr])
-    return [i,groups]
+# def groupValues(irow0row1row2):
+#     """
+#
+#     :param irow0row1row2: one entry in supKEigsVecs
+#     :return:
+#     """
+#     i,row0,row1,row2=irow0row1row2
+#     #positions of eigenvalues and eigenvalues
+#     indexAndVals=[]
+#     for i in range(0,5):
+#         tmp0=[0,i,row0[2][i]]
+#         indexAndVals.append(tmp0)
+#
+#         tmp1=[1,i,row1[2][i]]
+#         indexAndVals.append(tmp1)
+#
+#         tmp2=[2,i,row2[2][i]]
+#         indexAndVals.append(tmp2)
+#
+#     #sort eigenvalues
+#     sortedIndexAndVals=sorted(indexAndVals,key=lambda item: item[2])
+#
+#     #group eigenvalues
+#     groups=[]
+#     epsr=1e-5
+#     epsa=1e-7
+#     groups.append([sortedIndexAndVals[0]])
+#     for i in range(1,len(sortedIndexAndVals)):
+#         lastVal=groups[-1][-1][2]
+#         entryCurr=sortedIndexAndVals[i]
+#         if np.isclose(lastVal,entryCurr[2],rtol=epsr,atol=epsa):
+#             groups[-1].append(entryCurr)
+#         else:
+#             groups.append([entryCurr])
+#     return [i,groups]
 
 
 def zProjRow(z,row):
@@ -241,12 +265,12 @@ def projection(n):
     """
 
     :param n: index of K in SBZ
-    :return:[n, [j,[inds0],[inds1],[inds2]]], j-th eigenvector of hs projected to each of the eigenvectors of h0s,
+    :return:[n, [j,[inds0],[inds1],[inds2],[coefs],[coefs],[coefs]]], j-th eigenvector of hs projected to each of the eigenvectors of h0s,
     inds0, inds1, inds2 are indices of non-zero projections
     """
-    eps=1e-7
-    _,valshs,vecshs=retKSorted[n]
-    row0,row1,row2=supKEigsVecs[n]
+    eps=1e-2
+    _,valshs,vecshs=retKSorted[n]#perturbed
+    row0,row1,row2=supKEigsVecs[n]#original
 
     projInd=[n,[]]
     for j in range(0,len(valshs)):
@@ -264,6 +288,12 @@ def projection(n):
         coefs2Tmp=zProjRow(zTmp,row2)
         inds2Tmp=np.where(coefs2Tmp>eps)[0]
         jInd.append(inds2Tmp)
+
+        jInd.append(coefs0Tmp[inds0Tmp])
+        jInd.append(coefs1Tmp[inds1Tmp])
+        jInd.append(coefs2Tmp[inds2Tmp])
+
+
         projInd[-1].append(jInd)
     return projInd
 
@@ -280,37 +310,100 @@ print("projection time: ",tProjEnd-tProjStart)
 
 sortedProjs=sorted(retProjs,key=lambda item: item[0])
 
-kPlt0=[]
-kPlt1=[]
-kPlt2=[]
+knPlt0=[]
+knPlt1=[]
+knPlt2=[]
 
 EPlt0=[]
 EPlt1=[]
 EPlt2=[]
+
+sPlt0=[]
+sPlt1=[]
+sPlt2=[]
+
 for item in sortedProjs:
     n,listTmp=item
     for elem in listTmp:
-        j,inds0,inds1,inds2=elem
-        for elem in inds0:
+        j,inds0,inds1,inds2,coefs0,coefs1,coefs2=elem
+        # for elem in inds0:
+        #     n0=n
+        #     knPlt0.append(n0)
+        #     EPlt0.append(retKSorted[n][1][j])
+        for l in range(0,len(inds0)):
             n0=n
-            kPlt0.append(kValsAll[n0])
-            EPlt0.append(retKSorted[n][1][j])
-        for elem in inds1:
-            n1=n+int(Nk/3)
-            kPlt1.append(kValsAll[n1])
-            EPlt1.append(retKSorted[n][1][j])
-        for elem in inds2:
-            n2=n+int(2*Nk/3)
-            kPlt2.append(kValsAll[n2])
-            EPlt2.append(retKSorted[n][1][j])
-kPlt0=np.array(kPlt0)
-kPlt1=np.array(kPlt1)
-kPlt2=np.array(kPlt2)
+            knPlt0.append(n0)
+            EPlt0.append(retKSorted[n][1][j])#perturbed
+            sPlt0.append(coefs0[l])
+        # for elem in inds1:
+        #     n1=n+int(Nk/3)
+        #     knPlt1.append(n1)
+        #     EPlt1.append(retKSorted[n][1][j])
+        for l in range(0,len(inds1)):
+            n1 = n + int(Nk / 3)
+            knPlt1.append(n1)
+            EPlt1.append(retKSorted[n][1][j])#perturbed
+            sPlt1.append(coefs1[l])
+        # for elem in inds2:
+        #     n2=n+int(2*Nk/3)
+        #     knPlt2.append(n2)
+        #     EPlt2.append(retKSorted[n][1][j])
+        for l in range(0,len(inds2)):
+            n2 = n + int(2 * Nk / 3)
+            knPlt2.append(n2)
+            EPlt2.append(retKSorted[n][1][j])#perturbed
+            sPlt2.append(coefs2[l])
+knPlt0=np.array(knPlt0)
+knPlt1=np.array(knPlt1)
+knPlt2=np.array(knPlt2)
+sPlt0=np.array(sPlt0)
+sPlt1=np.array(sPlt1)
+sPlt2=np.array(sPlt2)
+multiply=10
 plt.figure()
-plt.scatter(kPlt0/np.pi,EPlt0,color="red")
-plt.scatter(kPlt1/np.pi,EPlt1,color="red")
-plt.scatter(kPlt2/np.pi,EPlt2,color="red")
+plt.scatter(2*knPlt0/Nk,EPlt0,color="red",s=sPlt0*multiply)
+plt.scatter(2*knPlt1/Nk,EPlt1,color="red",s=sPlt1*multiply)
+plt.scatter(2*knPlt2/Nk,EPlt2,color="red",s=sPlt2*multiply)
 plt.xlabel("$k/\pi$")
 plt.ylabel("Energy")
 plt.savefig("unfolded.png")
+plt.close()
+
+fig,axs=plt.subplots(1,2,figsize=(30, 15))
+
+# multiply=10
+
+axs[1].scatter(2*knPlt0/Nk,EPlt0,color="red",s=sPlt0*multiply,label="unfolded")
+axs[1].scatter(2*knPlt1/Nk,EPlt1,color="blue",s=sPlt1*multiply)
+axs[1].scatter(2*knPlt2/Nk,EPlt2,color="green",s=sPlt2*multiply)
+lw=0.4
+count=0
+def count2legend(c):
+    if c==0:
+        return "folded"
+    else:
+        return None
+
+for j in range(0,15):
+    axs[1].plot(KPertPlt/np.pi,EigPertPlt[j],color="black",linewidth=lw,label=count2legend(count))
+    count+=1
+    axs[1].plot(KPertPlt / np.pi+2/3, EigPertPlt[j], color="black",linewidth=lw)
+    count += 1
+    axs[1].plot(KPertPlt / np.pi+4/3, EigPertPlt[j], color="black",linewidth=lw)
+    count += 1
+
+ct=0
+def ctOriginal(c):
+    if c==0:
+        return "folded"
+    else:
+        return None
+for j in range(0,15):
+    axs[0].plot(KPertPlt/np.pi,EigPertPlt[j],color="black",label=ctOriginal(ct))
+    ct+=1
+plt.legend()
+axs[1].set_xlabel("$k/\pi$")
+axs[0].set_xlabel("$K/\pi$")
+axs[0].set_ylabel("Energy")
+plt.savefig("overlapping.png")
 plt.close()
